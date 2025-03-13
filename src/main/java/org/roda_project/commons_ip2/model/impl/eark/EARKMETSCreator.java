@@ -454,6 +454,56 @@ public abstract class EARKMETSCreator {
     metsWrapper.getMets().getAmdSec().get(0).getDigiprovMD().add(digiprovMD);
     return mdRef;
   }
+  
+  protected MdSecType.MdRef addTechnicalMetadataToMETS(final MetsWrapper metsWrapper,
+    final IPMetadata technicalMetadata, final String technicalMetadataPath)
+    throws IPException, InterruptedException {
+    final MdSecType techMD = new MdSecType();
+    techMD.setSTATUS(technicalMetadata.getMetadataStatus().toString());
+    techMD.setID(Utils.generateRandomAndPrefixedUUID());
+    final MdSecType.MdRef mdRef = createMdRef(technicalMetadata.getId(), technicalMetadataPath);
+    mdRef.setMDTYPE(technicalMetadata.getMetadataType().asString());
+    if (StringUtils.isNotBlank(technicalMetadata.getMetadataType().getOtherType())) {
+      mdRef.setOTHERMDTYPE(technicalMetadata.getMetadataType().getOtherType());
+    }
+
+    // set mimetype, date creation, etc.
+    METSUtils.setFileBasicInformation(technicalMetadata.getMetadata().getPath(), mdRef);
+
+    // structural map info.
+    if (metsWrapper.getMetadataDiv() != null) {
+      metsWrapper.getMetadataDiv().getADMID().add(techMD);
+    }
+
+    techMD.setMdRef(mdRef);
+    metsWrapper.getMets().getAmdSec().get(0).getTechMD().add(techMD);
+    return mdRef;
+  }
+
+  protected MdSecType.MdRef addSourceMetadataToMETS(final MetsWrapper metsWrapper,
+    final IPMetadata sourceMetadata, final String sourceMetadataPath)
+    throws IPException, InterruptedException {
+    final MdSecType sourceMD = new MdSecType();
+    sourceMD.setSTATUS(sourceMetadata.getMetadataStatus().toString());
+    sourceMD.setID(Utils.generateRandomAndPrefixedUUID());
+    final MdSecType.MdRef mdRef = createMdRef(sourceMetadata.getId(), sourceMetadataPath);
+    mdRef.setMDTYPE(sourceMetadata.getMetadataType().asString());
+    if (StringUtils.isNotBlank(sourceMetadata.getMetadataType().getOtherType())) {
+      mdRef.setOTHERMDTYPE(sourceMetadata.getMetadataType().getOtherType());
+    }
+
+    // set mimetype, date creation, etc.
+    METSUtils.setFileBasicInformation(sourceMetadata.getMetadata().getPath(), mdRef);
+
+    // structural map info.
+    if (metsWrapper.getMetadataDiv() != null) {
+      metsWrapper.getMetadataDiv().getADMID().add(sourceMD);
+    }
+
+    sourceMD.setMdRef(mdRef);
+    metsWrapper.getMets().getAmdSec().get(0).getSourceMD().add(sourceMD);
+    return mdRef;
+  }
 
   protected String escapeNCName(final String id) {
     return id.replaceAll("[:@$%&/+,;\\s]", "_");

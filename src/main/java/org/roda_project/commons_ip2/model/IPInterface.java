@@ -79,6 +79,10 @@ public interface IPInterface {
 
   IPInterface addPreservationMetadata(IPMetadata preservationMetadata) throws IPException;
 
+  IPInterface addTechnicalMetadata(IPMetadata technicalMetadata) throws IPException;
+
+  IPInterface addSourceMetadata(IPMetadata sourceMetadata) throws IPException;
+
   IPInterface addOtherMetadata(IPMetadata otherMetadata) throws IPException;
 
   IPInterface addRepresentation(IPRepresentation representation) throws IPException;
@@ -108,6 +112,10 @@ public interface IPInterface {
   List<IPDescriptiveMetadata> getDescriptiveMetadata();
 
   List<IPMetadata> getPreservationMetadata();
+
+  List<IPMetadata> getTechnicalMetadata();
+
+  List<IPMetadata> getSourceMetadata();
 
   List<IPMetadata> getOtherMetadata();
 

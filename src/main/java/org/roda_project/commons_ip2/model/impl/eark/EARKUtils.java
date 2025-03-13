@@ -137,6 +137,50 @@ public class EARKUtils {
       }
     }
   }
+  
+  protected void addTechnicalMetadataToZipAndMETS(Map<String, ZipEntryInfo> zipEntries, MetsWrapper metsWrapper,
+    List<IPMetadata> technicalMetadata, String representationId) throws IPException, InterruptedException {
+    if (technicalMetadata != null && !technicalMetadata.isEmpty()) {
+      for (IPMetadata tm : technicalMetadata) {
+        if (Thread.interrupted()) {
+          throw new InterruptedException();
+        }
+        IPFileInterface file = tm.getMetadata();
+
+        String technicalMetadataPath = IPConstants.TECHNICAL_FOLDER
+          + ModelUtils.getFoldersFromList(file.getRelativeFolders()) + file.getFileName();
+        MdRef mdRef = metsGenerator.addTechnicalMetadataToMETS(metsWrapper, tm, technicalMetadataPath);
+
+        if (representationId != null) {
+          technicalMetadataPath = IPConstants.REPRESENTATIONS_FOLDER + representationId
+            + IPConstants.ZIP_PATH_SEPARATOR + technicalMetadataPath;
+        }
+        ZIPUtils.addMdRefFileToZip(zipEntries, file.getPath(), technicalMetadataPath, mdRef);
+      }
+    }
+  }
+
+  protected void addSourceMetadataToZipAndMETS(Map<String, ZipEntryInfo> zipEntries, MetsWrapper metsWrapper,
+    List<IPMetadata> sourceMetadata, String representationId) throws IPException, InterruptedException {
+    if (sourceMetadata != null && !sourceMetadata.isEmpty()) {
+      for (IPMetadata sm : sourceMetadata) {
+        if (Thread.interrupted()) {
+          throw new InterruptedException();
+        }
+        IPFileInterface file = sm.getMetadata();
+
+        String sourceMetadataPath = IPConstants.SOURCE_FOLDER + ModelUtils.getFoldersFromList(file.getRelativeFolders())
+          + file.getFileName();
+        MdRef mdRef = metsGenerator.addSourceMetadataToMETS(metsWrapper, sm, sourceMetadataPath);
+
+        if (representationId != null) {
+          sourceMetadataPath = IPConstants.REPRESENTATIONS_FOLDER + representationId + IPConstants.ZIP_PATH_SEPARATOR
+            + sourceMetadataPath;
+        }
+        ZIPUtils.addMdRefFileToZip(zipEntries, file.getPath(), sourceMetadataPath, mdRef);
+      }
+    }
+  }
 
   protected void addRepresentationsToZipAndMETS(IPInterface ip, List<IPRepresentation> representations,
     Map<String, ZipEntryInfo> zipEntries, MetsWrapper mainMETSWrapper, Path buildDir, IPEnums.SipType sipType)
@@ -214,6 +258,14 @@ public class EARKUtils {
         // representation preservation metadata
         addPreservationMetadataToZipAndMETS(zipEntries, representationMETSWrapper,
           representation.getPreservationMetadata(), representationId);
+          
+        // representation technical metadata
+        addTechnicalMetadataToZipAndMETS(zipEntries, representationMETSWrapper,
+          representation.getTechnicalMetadata(), representationId);
+        
+        // representation source metadata
+        addSourceMetadataToZipAndMETS(zipEntries, representationMETSWrapper,
+          representation.getSourceMetadata(), representationId);
 
         // representation other metadata
         addOtherMetadataToZipAndMETS(zipEntries, representationMETSWrapper, representation.getOtherMetadata(),
