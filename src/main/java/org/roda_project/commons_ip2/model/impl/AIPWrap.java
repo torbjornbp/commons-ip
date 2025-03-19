@@ -305,6 +305,26 @@ public class AIPWrap implements AIP {
   public List<IPFileInterface> getDocumentation() {
     return aip.getDocumentation();
   }
+  
+  @Override
+  public IPInterface addExtraDirectory(String directoryName) {
+    return aip.addExtraDirectory(directoryName);
+  }
+  
+  @Override
+  public IPInterface addFileToExtraDirectory(String directoryName, IPFileInterface file) throws IPException {
+    return aip.addFileToExtraDirectory(directoryName, file);
+  }
+  
+  @Override
+  public List<String> getExtraDirectories() {
+    return aip.getExtraDirectories();
+  }
+  
+  @Override
+  public List<IPFileInterface> getExtraDirectoryFiles(String directoryName) {
+    return aip.getExtraDirectoryFiles(directoryName);
+  }
 
   @Override
   public Map<String, ZipEntryInfo> getZipEntries() {

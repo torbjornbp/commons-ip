@@ -49,6 +49,8 @@ public abstract class IP implements IPInterface {
   private Map<String, IPRepresentation> representations;
   private List<IPFileInterface> schemas;
   private List<IPFileInterface> documentation;
+  private List<String> extraDirectories;
+  private Map<String, List<IPFileInterface>> extraDirectoryFiles;
 
   private Map<String, ZipEntryInfo> zipEntries;
 
@@ -77,6 +79,8 @@ public abstract class IP implements IPInterface {
     this.representations = new HashMap<>();
     this.schemas = new ArrayList<>();
     this.documentation = new ArrayList<>();
+    this.extraDirectories = new ArrayList<>();
+    this.extraDirectoryFiles = new HashMap<>();
 
     this.validationReport = new ValidationReport();
     this.zipEntries = new LinkedHashMap<>();
@@ -467,7 +471,8 @@ public abstract class IP implements IPInterface {
       + contentType + ", ancestors=" + ancestors + ", basePath=" + basePath + ", description=" + description
       + ", descriptiveMetadata=" + descriptiveMetadata + ", preservationMetadata=" + preservationMetadata
       + ", otherMetadata=" + otherMetadata + ", representationIds=" + representationIds + ", representations="
-      + representations + ", schemas=" + schemas + ", documentation=" + documentation + ", validationReport="
+      + representations + ", schemas=" + schemas + ", documentation=" + documentation 
+      + ", extraDirectories=" + extraDirectories + ", validationReport="
       + validationReport + "]";
   }
 
@@ -477,6 +482,34 @@ public abstract class IP implements IPInterface {
 
   public IP parse(final Path source, final Path destinationDirectory) throws ParseException {
     throw new ParseException("One must implement static method parse in a concrete class");
+  }
+  
+  @Override
+  public IPInterface addExtraDirectory(String directoryName) {
+    if (!extraDirectories.contains(directoryName)) {
+      extraDirectories.add(directoryName);
+      extraDirectoryFiles.put(directoryName, new ArrayList<>());
+    }
+    return this;
+  }
+  
+  @Override
+  public IPInterface addFileToExtraDirectory(String directoryName, IPFileInterface file) throws IPException {
+    if (!extraDirectories.contains(directoryName)) {
+      throw new IPException("Extra directory '" + directoryName + "' does not exist. Add it first with addExtraDirectory.");
+    }
+    extraDirectoryFiles.get(directoryName).add(file);
+    return this;
+  }
+  
+  @Override
+  public List<String> getExtraDirectories() {
+    return extraDirectories;
+  }
+  
+  @Override
+  public List<IPFileInterface> getExtraDirectoryFiles(String directoryName) {
+    return extraDirectoryFiles.getOrDefault(directoryName, new ArrayList<>());
   }
 
   @Override

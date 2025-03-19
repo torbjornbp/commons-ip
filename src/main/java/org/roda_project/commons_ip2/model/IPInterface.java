@@ -87,6 +87,40 @@ public interface IPInterface {
 
   IPInterface addDocumentation(IPFileInterface documentation);
 
+  /**
+   * Adds an extra directory at the root of the Information Package.
+   * Supports CSIPSTR14: "The Information Package MAY be extended with additional sub-folders."
+   *
+   * @param directoryName name of the directory to add at the package root
+   * @return the Information Package object, to allow method chaining
+   */
+  IPInterface addExtraDirectory(String directoryName);
+
+  /**
+   * Adds a file to an extra directory at the root of the Information Package.
+   *
+   * @param directoryName name of the extra directory at the package root
+   * @param file the file to add
+   * @return the Information Package object, to allow method chaining
+   * @throws IPException if the directory doesn't exist
+   */
+  IPInterface addFileToExtraDirectory(String directoryName, IPFileInterface file) throws IPException;
+
+  /**
+   * Returns the list of extra directories added to the package.
+   *
+   * @return list of extra directory names
+   */
+  List<String> getExtraDirectories();
+
+  /**
+   * Returns the files in a specific extra directory.
+   *
+   * @param directoryName name of the extra directory
+   * @return list of files in the directory
+   */
+  List<IPFileInterface> getExtraDirectoryFiles(String directoryName);
+
   IPInterface addAgentToRepresentation(String representationID, IPAgent agent) throws IPException;
 
   IPInterface addDescriptiveMetadataToRepresentation(String representationID, IPDescriptiveMetadata descriptiveMetadata)

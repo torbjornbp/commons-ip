@@ -225,6 +225,12 @@ public class EARKUtils {
         // representation documentation
         addDocumentationToZipAndMETS(zipEntries, representationMETSWrapper, representation.getDocumentation(),
           representationId);
+          
+        // representation extra directories (CSIPSTR14)
+        if (representation.getExtraDirectories() != null && !representation.getExtraDirectories().isEmpty()) {
+          addExtraDirectoriesToZipAndMETS(zipEntries, representationMETSWrapper, 
+            representation.getExtraDirectories(), representation, representationId);
+        }
 
         // add representation METS to Zip file and to main METS file
         if (IPEnums.SipType.ERMS.equals(sipType)) {
@@ -619,6 +625,9 @@ public class EARKUtils {
 
               // process documentation
               processDocumentationMetadata(representationMetsWrapper, ip, representationBasePath);
+              
+              // process extra directories (CSIPSTR14)
+              processRepresentationExtraDirectories(representationMetsWrapper, ip, representation, representationBasePath);
             }
           }
 
@@ -1003,6 +1012,59 @@ public class EARKUtils {
     return processFile(ip, metsWrapper.getDocumentationDiv(), IPConstants.DOCUMENTATION, basePath);
   }
 
+  /**
+   * Adds extra directories and their files to the ZIP file and METS document.
+   *
+   * @param zipEntries the map of ZIP entries
+   * @param metsWrapper the METS wrapper
+   * @param extraDirectories list of extra directory names
+   * @param container the container (IPInterface or IPRepresentation) containing the extra directory files
+   * @param representationId the representation ID or null if at root level
+   * @throws IPException if an error occurs
+   * @throws InterruptedException if the operation is interrupted 
+   */
+  protected void addExtraDirectoriesToZipAndMETS(Map<String, ZipEntryInfo> zipEntries, MetsWrapper metsWrapper,
+      List<String> extraDirectories, Object container, String representationId) throws IPException, InterruptedException {
+    
+    if (extraDirectories != null && !extraDirectories.isEmpty()) {
+      for (String dirName : extraDirectories) {
+        if (Thread.interrupted()) {
+          throw new InterruptedException();
+        }
+        
+        List<IPFileInterface> files = null;
+        if (container instanceof IPInterface ip) {
+          files = ip.getExtraDirectoryFiles(dirName);
+        } else if (container instanceof IPRepresentation rep) {
+          files = rep.getExtraDirectoryFiles(dirName);
+        }
+        
+        if (files != null && !files.isEmpty()) {
+          for (IPFileInterface file : files) {
+            if (Thread.interrupted()) {
+              throw new InterruptedException();
+            }
+            
+            String filePath = dirName + IPConstants.ZIP_PATH_SEPARATOR 
+              + ModelUtils.getFoldersFromList(file.getRelativeFolders()) + file.getFileName();
+              
+            // Add the file to METS
+            FileType fileType = metsGenerator.addExtraDirectoryFileToMETS(metsWrapper, file, filePath, dirName);
+            
+            // Adjust the path if this is for a representation
+            if (representationId != null) {
+              filePath = IPConstants.REPRESENTATIONS_FOLDER + representationId 
+                + IPConstants.ZIP_PATH_SEPARATOR + filePath;
+            }
+            
+            // Add the file to the ZIP
+            ZIPUtils.addFileTypeFileToZip(zipEntries, file.getPath(), filePath, fileType);
+          }
+        }
+      }
+    }
+  }
+
   protected IPInterface processAncestors(MetsWrapper metsWrapper, IPInterface ip) {
     Mets mets = metsWrapper.getMets();
 
@@ -1011,6 +1073,121 @@ public class EARKUtils {
     }
 
     return ip;
+  }
+  
+  /**
+   * Process extra directories that follow CSIPSTR14 at the root level of the IP.
+   * Extracts directories that are not standard CSIP folders from the METS file.
+   * 
+   * @param metsWrapper the METS wrapper
+   * @param ip the Information Package interface
+   * @param basePath the base path of the IP
+   * @return the updated IP
+   */
+  protected IPInterface processExtraDirectories(MetsWrapper metsWrapper, IPInterface ip, Path basePath) {
+    if (metsWrapper.getMainDiv() != null && metsWrapper.getMainDiv().getDiv() != null) {
+      for (DivType div : metsWrapper.getMainDiv().getDiv()) {
+        String label = div.getLABEL();
+        
+        // Skip standard CSIP directories
+        if (IPConstants.METADATA.equalsIgnoreCase(label) ||
+            (IPConstants.METADATA + "/" + IPConstants.OTHER).equalsIgnoreCase(label) ||
+            IPConstants.DATA.equalsIgnoreCase(label) ||
+            IPConstants.SCHEMAS.equalsIgnoreCase(label) ||
+            IPConstants.DOCUMENTATION.equalsIgnoreCase(label) ||
+            IPConstants.SUBMISSION.equalsIgnoreCase(label) ||
+            label.startsWith(IPConstants.REPRESENTATIONS_WITH_FIRST_LETTER_CAPITAL)) {
+          continue;
+        }
+        
+        // Found an extra directory, add it and process its files
+        ip.addExtraDirectory(label);
+        processExtraDirectoryFiles(ip, null, div, label, basePath);
+      }
+    }
+    return ip;
+  }
+  
+  /**
+   * Process files in an extra directory.
+   * 
+   * @param ip the Information Package interface
+   * @param representation the representation or null if processing at IP level
+   * @param div the division in the METS structMap
+   * @param directoryName the directory name
+   * @param basePath the base path
+   */
+  private void processExtraDirectoryFiles(IPInterface ip, IPRepresentation representation, 
+      DivType div, String directoryName, Path basePath) {
+    if (div.getFptr() != null) {
+      for (DivType.Fptr fptr : div.getFptr()) {
+        Object object = fptr.getFILEID();
+        if (object instanceof FileGrpType fileGrp) {
+          for (FileType fileType : fileGrp.getFile()) {
+            if (fileType.getFLocat() != null) {
+              FLocat fLocat = fileType.getFLocat().get(0);
+              String href = Utils.extractedRelativePathFromHref(fLocat.getHref());
+              Path filePath = basePath.resolve(href);
+              
+              if (Files.exists(filePath)) {
+                List<String> fileRelativeFolders = Utils.getFileRelativeFolders(basePath.resolve(directoryName), filePath);
+                Optional<IPFileInterface> file = validateFile(ip, filePath, fileType, fileRelativeFolders);
+                
+                if (file.isPresent()) {
+                  try {
+                    if (representation != null) {
+                      representation.addFileToExtraDirectory(directoryName, file.get());
+                    } else {
+                      ip.addFileToExtraDirectory(directoryName, file.get());
+                    }
+                    ValidationUtils.addInfo(ip.getValidationReport(),
+                      "Extra directory file found with matching checksums", ip.getBasePath(), filePath);
+                  } catch (IPException e) {
+                    ValidationUtils.addIssue(ip.getValidationReport(), 
+                      "Error adding file to extra directory: " + e.getMessage(),
+                      ValidationEntry.LEVEL.WARN, ip.getBasePath(), filePath);
+                  }
+                }
+              } else {
+                ValidationUtils.addIssue(ip.getValidationReport(), 
+                  "Extra directory file not found", ValidationEntry.LEVEL.ERROR, 
+                  div, ip.getBasePath(), filePath);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Process representation-level extra directories.
+   * 
+   * @param representationMetsWrapper the representation METS wrapper
+   * @param ip the Information Package interface
+   * @param representation the representation
+   * @param representationBasePath the base path of the representation
+   */
+  protected void processRepresentationExtraDirectories(MetsWrapper representationMetsWrapper, 
+      IPInterface ip, IPRepresentation representation, Path representationBasePath) {
+    if (representationMetsWrapper.getMainDiv() != null && representationMetsWrapper.getMainDiv().getDiv() != null) {
+      for (DivType div : representationMetsWrapper.getMainDiv().getDiv()) {
+        String label = div.getLABEL();
+        
+        // Skip standard CSIP directories
+        if (IPConstants.METADATA.equalsIgnoreCase(label) ||
+            (IPConstants.METADATA + "/" + IPConstants.OTHER).equalsIgnoreCase(label) ||
+            IPConstants.DATA.equalsIgnoreCase(label) ||
+            IPConstants.SCHEMAS.equalsIgnoreCase(label) ||
+            IPConstants.DOCUMENTATION.equalsIgnoreCase(label)) {
+          continue;
+        }
+        
+        // Found an extra directory, add it and process its files
+        representation.addExtraDirectory(label);
+        processExtraDirectoryFiles(ip, representation, div, label, representationBasePath);
+      }
+    }
   }
 
   protected IPInterface processSubmissionMetadata(final MetsWrapper metsWrapper, final IPInterface ip,

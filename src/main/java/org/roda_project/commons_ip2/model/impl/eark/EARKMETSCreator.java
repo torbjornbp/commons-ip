@@ -567,6 +567,94 @@ public abstract class EARKMETSCreator {
 
     return file;
   }
+  
+  /**
+   * Adds a file from an extra directory to the METS document.
+   *
+   * @param metsWrapper the METS wrapper object
+   * @param file the file to add
+   * @param filePath the path to the file within the package
+   * @param directoryName the name of the extra directory
+   * @return the FileType object created for the file
+   * @throws IPException if an error occurs
+   * @throws InterruptedException if the operation is interrupted
+   */
+  protected FileType addExtraDirectoryFileToMETS(final MetsWrapper metsWrapper, final IPFileInterface file, 
+    final String filePath, final String directoryName) throws IPException, InterruptedException {
+    final FileType fileType = new FileType();
+    fileType.setID(Utils.generateRandomAndPrefixedFileID());
+
+    // set mimetype, date creation, etc.
+    METSUtils.setFileBasicInformation(LOGGER, file.getPath(), fileType);
+
+    // add to file section
+    final FileType.FLocat fileLocation = METSUtils.createFileLocation(filePath);
+    fileType.getFLocat().add(fileLocation);
+    
+    // Create or get fileGrp for this extra directory
+    MetsType.FileSec.FileGrp extraDirFileGroup = getOrCreateExtraDirectoryFileGroup(metsWrapper, directoryName);
+    extraDirFileGroup.getFile().add(fileType);
+    
+    // Create or get div for this extra directory
+    DivType extraDirDiv = getOrCreateExtraDirectoryDiv(metsWrapper, directoryName);
+    
+    // Add file pointer if it's the first file
+    if (extraDirDiv.getFptr().isEmpty()) {
+      final DivType.Fptr fptr = new DivType.Fptr();
+      fptr.setFILEID(extraDirFileGroup);
+      extraDirDiv.getFptr().add(fptr);
+    }
+
+    return fileType;
+  }
+  
+  /**
+   * Gets or creates a file group for an extra directory.
+   *
+   * @param metsWrapper the METS wrapper
+   * @param directoryName the name of the extra directory
+   * @return the file group for the extra directory
+   */
+  private MetsType.FileSec.FileGrp getOrCreateExtraDirectoryFileGroup(final MetsWrapper metsWrapper, final String directoryName) {
+    // Create FileSec if it doesn't exist
+    if (metsWrapper.getMets().getFileSec() == null) {
+      MetsType.FileSec fileSec = createFileSec();
+      metsWrapper.getMets().setFileSec(fileSec);
+    }
+    
+    // Look for existing fileGrp for this directory
+    for (MetsType.FileSec.FileGrp fileGrp : metsWrapper.getMets().getFileSec().getFileGrp()) {
+      if (directoryName.equals(fileGrp.getUSE())) {
+        return fileGrp;
+      }
+    }
+    
+    // Create new fileGrp if not found
+    final MetsType.FileSec.FileGrp fileGroup = createFileGroup(directoryName);
+    metsWrapper.getMets().getFileSec().getFileGrp().add(fileGroup);
+    return fileGroup;
+  }
+  
+  /**
+   * Gets or creates a div for an extra directory.
+   *
+   * @param metsWrapper the METS wrapper
+   * @param directoryName the name of the extra directory
+   * @return the div for the extra directory
+   */
+  private DivType getOrCreateExtraDirectoryDiv(final MetsWrapper metsWrapper, final String directoryName) {
+    // Look for existing div for this directory
+    for (DivType div : metsWrapper.getMainDiv().getDiv()) {
+      if (directoryName.equals(div.getLABEL())) {
+        return div;
+      }
+    }
+    
+    // Create new div if not found
+    final DivType div = createDivForStructMap(directoryName);
+    metsWrapper.getMainDiv().getDiv().add(div);
+    return div;
+  }
 
   protected StructMapType generateAncestorStructMap(final List<String> ancestors) {
     final StructMapType structMap = new StructMapType();

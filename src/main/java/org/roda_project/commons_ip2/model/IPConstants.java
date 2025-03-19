@@ -64,6 +64,9 @@ public final class IPConstants {
   public static final String SUBMISSION = "submission";
   public static final String SUBMISSION_FOLDER = SUBMISSION + METS_PATH_SEPARATOR;
 
+  // Extra Directories
+  public static final String EXTRA_DIRS_PREFIX = "extra_dir_";
+  
   // misc
   public static final String ZIP_PATH_SEPARATOR = "/";
   public static final String CHECKSUM_MD5_ALGORITHM = "MD5";

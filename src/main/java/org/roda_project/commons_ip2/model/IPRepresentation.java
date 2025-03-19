@@ -9,11 +9,14 @@ package org.roda_project.commons_ip2.model;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.xml.datatype.XMLGregorianCalendar;
 
+import org.roda_project.commons_ip.utils.IPException;
 import org.roda_project.commons_ip2.utils.Utils;
 
 public class IPRepresentation {
@@ -34,6 +37,8 @@ public class IPRepresentation {
   private List<IPFileInterface> data;
   private List<IPFileInterface> schemas;
   private List<IPFileInterface> documentation;
+  private List<String> extraDirectories;
+  private Map<String, List<IPFileInterface>> extraDirectoryFiles;
 
   public IPRepresentation() {
     this.representationID = Utils.generateRandomAndPrefixedUUID();
@@ -50,6 +55,8 @@ public class IPRepresentation {
     this.data = new ArrayList<>();
     this.schemas = new ArrayList<>();
     this.documentation = new ArrayList<>();
+    this.extraDirectories = new ArrayList<>();
+    this.extraDirectoryFiles = new HashMap<>();
   }
 
   public IPRepresentation(String representationID) {
@@ -191,6 +198,56 @@ public class IPRepresentation {
     this.documentation.add(documentation);
     return this;
   }
+  
+  /**
+   * Adds an extra directory to the representation.
+   * Supports CSIPSTR14: "The Information Package MAY be extended with additional sub-folders."
+   *
+   * @param directoryName name of the directory to add
+   * @return the Representation object, to allow method chaining
+   */
+  public IPRepresentation addExtraDirectory(String directoryName) {
+    if (!extraDirectories.contains(directoryName)) {
+      extraDirectories.add(directoryName);
+      extraDirectoryFiles.put(directoryName, new ArrayList<>());
+    }
+    return this;
+  }
+  
+  /**
+   * Adds a file to an extra directory in the representation.
+   *
+   * @param directoryName name of the extra directory
+   * @param file the file to add
+   * @return the Representation object, to allow method chaining
+   * @throws IPException if the directory doesn't exist
+   */
+  public IPRepresentation addFileToExtraDirectory(String directoryName, IPFileInterface file) throws IPException {
+    if (!extraDirectories.contains(directoryName)) {
+      throw new IPException("Extra directory '" + directoryName + "' does not exist. Add it first with addExtraDirectory.");
+    }
+    extraDirectoryFiles.get(directoryName).add(file);
+    return this;
+  }
+  
+  /**
+   * Returns the list of extra directories added to the representation.
+   *
+   * @return list of extra directory names
+   */
+  public List<String> getExtraDirectories() {
+    return extraDirectories;
+  }
+  
+  /**
+   * Returns the files in a specific extra directory.
+   *
+   * @param directoryName name of the extra directory
+   * @return list of files in the directory
+   */
+  public List<IPFileInterface> getExtraDirectoryFiles(String directoryName) {
+    return extraDirectoryFiles.getOrDefault(directoryName, new ArrayList<>());
+  }
 
   @Override
   public String toString() {
@@ -198,8 +255,11 @@ public class IPRepresentation {
       + createDate + ", modificationDate=" + modificationDate + ", contentType=" + contentType
       + ", contentInformationType=" + contentInformationType + ", status=" + status + ", description=" + description
       + ", agents=" + agents + ", descriptiveMetadata=" + descriptiveMetadata + ", preservationMetadata="
-      + preservationMetadata + ", otherMetadata=" + otherMetadata + ", data=" + data + ", schemas=" + schemas
-      + ", documentation=" + documentation + "]";
+      + preservationMetadata + ", otherMetadata=" + otherMetadata + ", data=" + data
+      + ", schemas=" + schemas + ", documentation=" + documentation 
+      + ", extraDirectories=" + extraDirectories 
+      + ", extraDirectoryFiles=" + extraDirectoryFiles 
+      + "]";
   }
 
 }

@@ -128,6 +128,8 @@ public class EARKSIP extends SIP {
           earkUtils.processSchemasMetadata(metsWrapper, sip, sip.getBasePath());
           earkUtils.processDocumentationMetadata(metsWrapper, sip, sip.getBasePath());
           earkUtils.processAncestors(metsWrapper, sip);
+          // Process extra directories (CSIPSTR14)
+          earkUtils.processExtraDirectories(metsWrapper, sip, sip.getBasePath());
         }
       }
 
@@ -224,6 +226,8 @@ public class EARKSIP extends SIP {
         sipType);
       earkUtils.addSchemasToZipAndMETS(zipEntries, mainMETSWrapper, getSchemas(), null);
       earkUtils.addDocumentationToZipAndMETS(zipEntries, mainMETSWrapper, getDocumentation(), null);
+      // Add extra directories (CSIPSTR14 support)
+      earkUtils.addExtraDirectoriesToZipAndMETS(zipEntries, mainMETSWrapper, getExtraDirectories(), this, null);
       METSUtils.addMainMETSToZip(zipEntries, mainMETSWrapper, buildDir);
 
       notifySipBuildPackagingStarted(zipEntries.size());
